@@ -149,6 +149,8 @@ public:
 	bool hideFirstStepResponseError = false;
 	bool noDefault = false;
 
+	bool passwordSeeable = false;
+
 	WindowsInfo windowsVersion;
 
 	bool pushAuthenticationSuccess = false;

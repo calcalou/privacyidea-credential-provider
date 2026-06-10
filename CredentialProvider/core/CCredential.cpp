@@ -531,6 +531,28 @@ HRESULT CCredential::GetSubmitButtonValue(
 	return E_INVALIDARG;
 }
 
+// GetFieldOptions - Function display "eye" button in paswword field 
+HRESULT CCredential::GetFieldOptions(
+    DWORD dwFieldID,
+    _Out_ CREDENTIAL_PROVIDER_CREDENTIAL_FIELD_OPTIONS* pcpcfo)
+{
+    *pcpcfo = CPCFO_NONE;
+
+    if (_config->passwordSeeable)  // verification Registry Key "password_seeable"
+    {
+        if (dwFieldID == FID_PASSWORD
+            || dwFieldID == FID_OTP
+            || dwFieldID == FID_FIDO_PIN
+            || dwFieldID == FID_NEW_PASS_1
+            || dwFieldID == FID_NEW_PASS_2)
+        {
+            *pcpcfo = CPCFO_ENABLE_PASSWORD_REVEAL;
+        }
+    }
+
+    return S_OK;
+}
+
 // Sets the value of a field which can accept a string as a value.
 // This is called on each keystroke when a user types into an edit field.
 HRESULT CCredential::SetStringValue(
@@ -1958,7 +1980,11 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 			{
 				if (hr == FIDO_ERR_TX) hr = FIDO_DEVICE_ERR_TX;
 				_lastStatus = hr;
-				SetMode(Mode::PRIVACYIDEA);
+				// On PIN errors, keep user on PIN screen to retry. On other errors, go back to OTP.
+				if (hr != FIDO_ERR_PIN_INVALID && hr != FIDO_ERR_PIN_AUTH_BLOCKED)
+				{
+					SetMode(Mode::PRIVACYIDEA);
+				}
 				return hr;
 			}
 		}
@@ -2008,7 +2034,11 @@ HRESULT CCredential::FIDOAuthentication(IQueryContinueWithStatus* pqcws)
 			PIError("Signing failed with error: " + to_string(hr));
 			if (hr == FIDO_ERR_TX) hr = FIDO_DEVICE_ERR_TX;
 			_lastStatus = hr;
-			if (hr != FIDO_ERR_NO_CREDENTIALS) SetMode(Mode::PRIVACYIDEA);
+			// On PIN errors, keep user on PIN screen to retry. On other errors, go back to OTP.
+			if (hr != FIDO_ERR_NO_CREDENTIALS && hr != FIDO_ERR_PIN_INVALID && hr != FIDO_ERR_PIN_AUTH_BLOCKED)
+			{
+				SetMode(Mode::PRIVACYIDEA);
+			}
 			return E_FAIL;
 		}
 
